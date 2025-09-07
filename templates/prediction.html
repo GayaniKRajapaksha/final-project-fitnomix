@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Meal & Lifestyle Recommender</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #333; min-height: 100vh; }
+        
+        /* Navbar Styles */
+        .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 15px 0; box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1); position: sticky; top: 0; z-index: 1000; }
+        .navbar-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar-brand { font-size: 24px; font-weight: 700; color: #667eea; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .navbar-brand:hover { color: #764ba2; }
+        .navbar-nav { display: flex; list-style: none; margin: 0; padding: 0; gap: 30px; }
+        .nav-item { position: relative; }
+        .nav-link { color: #555; text-decoration: none; font-weight: 500; padding: 10px 15px; border-radius: 8px; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
+        .nav-link:hover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; transform: translateY(-2px); }
+        .nav-link.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+        .mobile-menu-btn { display: none; background: none; border: none; font-size: 24px; color: #667eea; cursor: pointer; }
+        
+        .container { max-width: 1200px; margin: 20px auto; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
+        h1, h2 { text-align: center; color: #555; margin-bottom: 30px; }
+        .form-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { margin-bottom: 8px; font-weight: 600; color: #555; }
+        .form-group input, .form-group select { padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 14px; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group select:focus { border-color: #667eea; outline: none; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        button { width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: transform 0.2s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        button:disabled { background: #6c757d; cursor: not-allowed; transform: none; }
+        .results-container { margin-top: 30px; padding: 30px; border-radius: 15px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; display: none; }
+        .results-container h2 { color: white; margin-bottom: 25px; }
+        .results-container p { font-size: 18px; line-height: 1.6; margin-bottom: 15px; }
+        .results-container strong { color: #fff; }
+        .error-message { color: #dc3545; text-align: center; margin-top: 20px; padding: 15px; background: #f8d7da; border-radius: 8px; }
+        .nutrition-list { margin-left: 20px; }
+        .nutrition-list li { margin-bottom: 8px; }
+        .loading { text-align: center; margin-top: 20px; color: #666; }
+        
+        /* Tracking Dashboard Styles */
+        .tracking-dashboard { margin-top: 30px; display: none; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .tracking-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); border-left: 5px solid #667eea; }
+        .tracking-card h3 { margin: 0 0 20px 0; color: #333; font-size: 20px; }
+        .progress-bar { background: #e9ecef; border-radius: 10px; height: 20px; margin: 10px 0; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 10px; transition: width 0.3s ease; }
+        .progress-calories { background: linear-gradient(90deg, #ff6b6b, #ffa500); }
+        .progress-protein { background: linear-gradient(90deg, #4ecdc4, #44a08d); }
+        .progress-carbs { background: linear-gradient(90deg, #a8edea, #fed6e3); }
+        .progress-fat { background: linear-gradient(90deg, #ffecd2, #fcb69f); }
+        .progress-budget { background: linear-gradient(90deg, #667eea, #764ba2); }
+        .metric { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
+        .metric-label { font-weight: 600; color: #555; }
+        .metric-value { font-weight: 700; color: #333; }
+        .chart-container { position: relative; height: 300px; margin: 20px 0; }
+        .daily-summary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .summary-item { text-align: center; }
+        .summary-value { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
+        .summary-label { font-size: 14px; opacity: 0.9; }
+        
+        /* Grocery List Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 0; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .modal-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px 15px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { margin: 0; font-size: 20px; }
+        .close { color: white; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { opacity: 0.7; }
+        .modal-body { padding: 20px; max-height: 400px; overflow-y: auto; }
+        .grocery-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .grocery-item:last-child { border-bottom: none; }
+        .grocery-item input[type="checkbox"] { margin-right: 12px; transform: scale(1.2); }
+        .grocery-item label { cursor: pointer; flex: 1; font-size: 16px; }
+        .modal-footer { padding: 20px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s; }
+        .btn-primary { background-color: #007BFF; color: white; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #545b62; }
+        .btn-outline { background-color: transparent; border: 2px solid #007BFF; color: #007BFF; }
+        .btn-outline:hover { background-color: #007BFF; color: white; }
+        .grocery-btn { background-color: #fff; color: #f5576c; border: 2px solid #fff; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin: 5px; transition: all 0.2s; }
+        .grocery-btn:hover { background-color: #f5576c; color: white; }
+        .tracking-btn { background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin: 5px; font-weight: 600; transition: all 0.2s; }
+        .tracking-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4); }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .navbar-nav { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; flex-direction: column; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+            .navbar-nav.active { display: flex; }
+            .mobile-menu-btn { display: block; }
+            .container { margin: 10px; padding: 20px; }
+            .form-section { grid-template-columns: 1fr; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                🍽️ Smart Meal Planner
+            </a>
+            
+            <ul class="navbar-nav" id="navbarNav">
+                <li class="nav-item">
+                    <a href="/" class="nav-link">
+                        🏠 Home
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/customer/dashboard" class="nav-link active">
+                        📊 Recommendations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/customer/index" class="nav-link">
+                        📈 Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/profile" class="nav-link">
+                        👤 Profile
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/logout" class="nav-link">
+                        🚪 Logout
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">
+                    U
+                </div>
+                <span id="userName">User</span>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                ☰
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>🍽️ Smart Meal & Lifestyle Recommender</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">Get personalized recommendations and track your nutrition journey</p>
+        
+        <form id="predictionForm" method="post">
+            <h2>User Details</h2>
+            <div class="form-section">
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" name="age" required min="1">
+                </div>
+                <div class="form-group">
+                    <label for="gender">Gender</label>
+                    <select id="gender" name="gender" required>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="weight">Weight (kg)</label>
+                    <input type="number" id="weight" name="weight" step="0.1" required min="1">
+                </div>
+                <div class="form-group">
+                    <label for="height">Height (cm)</label>
+                    <input type="number" id="height" name="height" step="0.1" required min="1">
+                </div>
+                <div class="form-group">
+                    <label for="blood_pressure">Blood Pressure (mmHg)</label>
+                    <input type="number" id="blood_pressure" name="blood_pressure" step="0.1" required min="1">
+                </div>
+                <div class="form-group">
+                    <label for="glucose">Glucose (mg/dL)</label>
+                    <input type="number" id="glucose" name="glucose" step="0.1" required min="1">
+                </div>
+                <div class="form-group">
+                    <label for="cholesterol">Cholesterol (mg/dL)</label>
+                    <input type="number" id="cholesterol" name="cholesterol" step="0.1" required min="1">
+                </div>
+            </div>
+
+            <h2>Health and Lifestyle</h2>
+            <div class="form-section">
+                <div class="form-group">
+                    <label for="disease_type">Disease Type</label>
+                    <select id="disease_type" name="disease_type" required>
+                        <option value="">Select Disease Type</option>
+                        <option value="None">None</option>
+                        <option value="Diabetes">Diabetes</option>
+                        <option value="Obesity">Obesity</option>
+                        <option value="Hypertension">Hypertension</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="severity">Severity</label>
+                    <select id="severity" name="severity" required>
+                        <option value="">Select Severity</option>
+                        <option value="None">None</option>
+                        <option value="Mild">Mild</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="Severe">Severe</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="physical_activity_level">Physical Activity Level</label>
+                    <select id="physical_activity_level" name="physical_activity_level" required>
+                        <option value="">Select Activity Level</option>
+                        <option value="Sedentary">Sedentary</option>
+                        <option value="Moderate">Moderate</option>
+                        <option value="Active">Active</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="dietary_restrictions">Dietary Restrictions</label>
+                    <select id="dietary_restrictions" name="dietary_restrictions" required>
+                        <option value="">Select Dietary Restriction</option>
+                        <option value="None">None</option>
+                        <option value="Low_Sugar">Low Sugar</option>
+                        <option value="Low_Sodium">Low Sodium</option>
+                    </select>
+                </div>
+            </div>
+
+            <h2>Meal Preferences</h2>
+            <div class="form-section">
+                <div class="form-group">
+                    <label for="meal_type">Meal Type</label>
+                    <select id="meal_type" name="meal_type" required>
+                        <option value="">Select Meal Type</option>
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                        <option value="Snack">Snack</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="dietary_habits">Dietary Habits</label>
+                    <select id="dietary_habits" name="dietary_habits" required>
+                        <option value="">Select Dietary Habit</option>
+                        <option value="Vegetarian">Vegetarian</option>
+                        <option value="Non-Vegetarian">Non-Vegetarian</option>
+                        <option value="Vegan">Vegan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="budget">Budget (LKR)</label>
+                    <input type="number" id="budget" name="budget" required min="0">
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn">Get Recommendations</button>
+        </form>
+
+        <div id="loading" class="loading" style="display: none;">
+            <p>🔄 Processing your request...</p>
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div id="results" class="results-container">
+            <h2>Your Personalized Recommendations</h2>
+            <div id="predictionResults"></div>
+        </div>
+
+        <!-- Tracking Dashboard -->
+        <div id="trackingDashboard" class="tracking-dashboard">
+            <h2>📊 Daily Tracking Dashboard</h2>
+            
+            <div class="daily-summary">
+                <h3 style="margin-top: 0; text-align: center;">Today's Summary</h3>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalCalories">0</div>
+                        <div class="summary-label">Calories</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalProtein">0g</div>
+                        <div class="summary-label">Protein</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalCarbs">0g</div>
+                        <div class="summary-label">Carbs</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalFat">0g</div>
+                        <div class="summary-label">Fat</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalSpent">LKR 0</div>
+                        <div class="summary-label">Spent</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="tracking-card">
+                    <h3>🔥 Calorie Intake</h3>
+                    <div class="metric">
+                        <span class="metric-label">Consumed</span>
+                        <span class="metric-value" id="caloriesConsumed">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Target</span>
+                        <span class="metric-value" id="caloriesTarget">2000</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-calories" id="caloriesProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Remaining</span>
+                        <span class="metric-value" id="caloriesRemaining">2000</span>
+                    </div>
+                </div>
+
+                <div class="tracking-card">
+                    <h3>💪 Protein Balance</h3>
+                    <div class="metric">
+                        <span class="metric-label">Consumed</span>
+                        <span class="metric-value" id="proteinConsumed">0g</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Target</span>
+                        <span class="metric-value" id="proteinTarget">150g</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-protein" id="proteinProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Remaining</span>
+                        <span class="metric-value" id="proteinRemaining">150g</span>
+                    </div>
+                </div>
+
+                <div class="tracking-card">
+                    <h3>🍞 Carbohydrates</h3>
+                    <div class="metric">
+                        <span class="metric-label">Consumed</span>
+                        <span class="metric-value" id="carbsConsumed">0g</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Target</span>
+                        <span class="metric-value" id="carbsTarget">250g</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-carbs" id="carbsProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Remaining</span>
+                        <span class="metric-value" id="carbsRemaining">250g</span>
+                    </div>
+                </div>
+
+                <div class="tracking-card">
+                    <h3>🥑 Fat Intake</h3>
+                    <div class="metric">
+                        <span class="metric-label">Consumed</span>
+                        <span class="metric-value" id="fatConsumed">0g</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Target</span>
+                        <span class="metric-value" id="fatTarget">65g</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-fat" id="fatProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Remaining</span>
+                        <span class="metric-value" id="fatRemaining">65g</span>
+                    </div>
+                </div>
+
+                <div class="tracking-card">
+                    <h3>💰 Budget Utilization</h3>
+                    <div class="metric">
+                        <span class="metric-label">Spent</span>
+                        <span class="metric-value" id="budgetSpent">LKR 0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Budget</span>
+                        <span class="metric-value" id="budgetTotal">LKR 1000</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-budget" id="budgetProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Remaining</span>
+                        <span class="metric-value" id="budgetRemaining">LKR 1000</span>
+                    </div>
+                </div>
+
+                <div class="tracking-card">
+                    <h3>📊 Nutrition Chart</h3>
+                    <div class="chart-container">
+                        <canvas id="nutritionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grocery List Modal -->
+    <div id="groceryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🛒 Grocery List</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="groceryListContainer">
+                    <!-- Grocery items will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="copyGroceryBtn">
+                    📋 Copy
+                </button>
+                <button class="btn btn-outline" id="downloadGroceryBtn">
+                    💾 Download
+                </button>
+                <button class="btn btn-secondary" id="closeGroceryBtn">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+            const navbarNav = document.getElementById('navbarNav');
+            navbarNav.classList.toggle('active');
+        });
+
+        // Set user info (you can get this from session or API)
+        function setUserInfo() {
+            // This would typically come from your backend session
+            const userName = 'User'; // Replace with actual username
+            const userAvatar = document.getElementById('userAvatar');
+            const userNameSpan = document.getElementById('userName');
+            
+            userNameSpan.textContent = userName;
+            userAvatar.textContent = userName.charAt(0).toUpperCase();
+        }
+
+        // Global tracking variables
+        let dailyTracking = {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            budget: 0,
+            meals: []
+        };
+
+        // Initialize nutrition chart
+        let nutritionChart;
+        function initNutritionChart() {
+            const ctx = document.getElementById('nutritionChart').getContext('2d');
+            nutritionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Protein', 'Carbs', 'Fat'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            '#4ecdc4',
+                            '#a8edea',
+                            '#ffecd2'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update tracking dashboard
+        function updateTrackingDashboard() {
+            // Update summary
+            document.getElementById('totalCalories').textContent = dailyTracking.calories;
+            document.getElementById('totalProtein').textContent = dailyTracking.protein + 'g';
+            document.getElementById('totalCarbs').textContent = dailyTracking.carbs + 'g';
+            document.getElementById('totalFat').textContent = dailyTracking.fat + 'g';
+            document.getElementById('totalSpent').textContent = 'LKR ' + dailyTracking.budget;
+
+            // Update progress bars
+            const caloriesTarget = 2000;
+            const proteinTarget = 150;
+            const carbsTarget = 250;
+            const fatTarget = 65;
+            const budgetTarget = 1000;
+
+            const caloriesPercent = Math.min((dailyTracking.calories / caloriesTarget) * 100, 100);
+            const proteinPercent = Math.min((dailyTracking.protein / proteinTarget) * 100, 100);
+            const carbsPercent = Math.min((dailyTracking.carbs / carbsTarget) * 100, 100);
+            const fatPercent = Math.min((dailyTracking.fat / fatTarget) * 100, 100);
+            const budgetPercent = Math.min((dailyTracking.budget / budgetTarget) * 100, 100);
+
+            document.getElementById('caloriesProgress').style.width = caloriesPercent + '%';
+            document.getElementById('proteinProgress').style.width = proteinPercent + '%';
+            document.getElementById('carbsProgress').style.width = carbsPercent + '%';
+            document.getElementById('fatProgress').style.width = fatPercent + '%';
+            document.getElementById('budgetProgress').style.width = budgetPercent + '%';
+
+            // Update remaining values
+            document.getElementById('caloriesConsumed').textContent = dailyTracking.calories;
+            document.getElementById('caloriesRemaining').textContent = Math.max(0, caloriesTarget - dailyTracking.calories);
+            document.getElementById('proteinConsumed').textContent = dailyTracking.protein + 'g';
+            document.getElementById('proteinRemaining').textContent = Math.max(0, proteinTarget - dailyTracking.protein) + 'g';
+            document.getElementById('carbsConsumed').textContent = dailyTracking.carbs + 'g';
+            document.getElementById('carbsRemaining').textContent = Math.max(0, carbsTarget - dailyTracking.carbs) + 'g';
+            document.getElementById('fatConsumed').textContent = dailyTracking.fat + 'g';
+            document.getElementById('fatRemaining').textContent = Math.max(0, fatTarget - dailyTracking.fat) + 'g';
+            document.getElementById('budgetSpent').textContent = 'LKR ' + dailyTracking.budget;
+            document.getElementById('budgetRemaining').textContent = 'LKR ' + Math.max(0, budgetTarget - dailyTracking.budget);
+
+            // Update chart
+            if (nutritionChart) {
+                nutritionChart.data.datasets[0].data = [dailyTracking.protein, dailyTracking.carbs, dailyTracking.fat];
+                nutritionChart.update();
+            }
+        }
+
+        // Add meal to tracking
+        function addMealToTracking(nutrition, budget) {
+            dailyTracking.calories += nutrition.calories;
+            dailyTracking.protein += nutrition.protein_g;
+            dailyTracking.carbs += nutrition.carbs_g;
+            dailyTracking.fat += nutrition.fat_g;
+            dailyTracking.budget += budget || 0;
+            
+            dailyTracking.meals.push({
+                nutrition: nutrition,
+                budget: budget,
+                timestamp: new Date()
+            });
+
+            updateTrackingDashboard();
+        }
+
+        // Get modal elements
+        const modal = document.getElementById('groceryModal');
+        const closeBtn = document.getElementsByClassName('close')[0];
+        const closeGroceryBtn = document.getElementById('closeGroceryBtn');
+        const copyGroceryBtn = document.getElementById('copyGroceryBtn');
+        const downloadGroceryBtn = document.getElementById('downloadGroceryBtn');
+
+        // Close modal functions
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
+        closeGroceryBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Copy grocery list function
+        copyGroceryBtn.onclick = async function() {
+            const container = document.getElementById('groceryListContainer');
+            const labels = Array.from(container.querySelectorAll('label')).map(l => `- ${l.textContent.trim()}`);
+            const text = labels.join('\n');
+            try {
+                await navigator.clipboard.writeText(text);
+                copyGroceryBtn.innerHTML = '📋 Copied!';
+                setTimeout(() => copyGroceryBtn.innerHTML = '📋 Copy', 1500);
+            } catch (err) {
+                alert('Copy failed. Please try again.');
+            }
+        }
+
+        // Download grocery list function
+        downloadGroceryBtn.onclick = function() {
+            const container = document.getElementById('groceryListContainer');
+            const labels = Array.from(container.querySelectorAll('label')).map(l => `- ${l.textContent.trim()}`);
+            const text = labels.join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'grocery_list.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Function to open grocery list modal
+        function openGroceryList(ingredients) {
+            const container = document.getElementById('groceryListContainer');
+            const items = ingredients.split(',').map(s => s.trim()).filter(Boolean);
+            
+            if (items.length === 0) {
+                container.innerHTML = '<p>No ingredients available.</p>';
+            } else {
+                const list = items.map((item, idx) => `
+                    <div class="grocery-item">
+                        <input type="checkbox" id="groc_${idx}">
+                        <label for="groc_${idx}">${item}</label>
+                    </div>
+                `).join('');
+                container.innerHTML = list;
+            }
+            modal.style.display = 'block';
+        }
+
+        // Initialize chart when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setUserInfo();
+            initNutritionChart();
+            updateTrackingDashboard();
+        });
+
+        document.getElementById('predictionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const error = document.getElementById('error');
+            const trackingDashboard = document.getElementById('trackingDashboard');
+            
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = 'Processing...';
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            error.style.display = 'none';
+            
+            fetch('/predict', {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const predictions = data.predictions;
+                    const resultsDiv = document.getElementById('predictionResults');
+
+                    // Build budget section
+                    const budgetEntered = predictions.budget_entered;
+                    const estimatedMealCost = predictions.estimated_meal_cost;
+                    const usagePercent = predictions.budget_usage_percent;
+                    const withinBudget = predictions.within_budget;
+                    
+                    let budgetSection = '';
+                    if (estimatedMealCost !== null && usagePercent !== null) {
+                        budgetSection = `
+                            <p><strong>Budget Entered:</strong> LKR ${budgetEntered}</p>
+                            <p><strong>Estimated Meal Cost:</strong> LKR ${estimatedMealCost}</p>
+                            <div style="background-color: rgba(255,255,255,0.2); padding: 10px; border-radius: 4px; margin: 10px 0;">
+                                <div style="background-color: ${withinBudget ? '#28a745' : '#dc3545'}; height: 12px; width: ${Math.min(100, usagePercent)}%; border-radius: 6px; margin-bottom: 5px;"></div>
+                                <p style="margin: 0;"><strong>Usage: ${usagePercent}%</strong> ${withinBudget ? '(Within budget)' : '(Over budget)'}</p>
+                            </div>
+                        `;
+                    } else {
+                        budgetSection = '<p><strong>Budget Usage:</strong> Budget insight unavailable for the recommended meal.</p>';
+                    }
+                    
+                    // Build nutrition section
+                    let nutritionSection = '';
+                    if (predictions.nutrition) {
+                        nutritionSection = `
+                            <p><strong>Predicted Nutrition Values:</strong></p>
+                            <ul class="nutrition-list">
+                                <li>Calories: ${predictions.nutrition.calories}</li>
+                                <li>Protein: ${predictions.nutrition.protein_g}g</li>
+                                <li>Carbohydrates: ${predictions.nutrition.carbs_g}g</li>
+                                <li>Fat: ${predictions.nutrition.fat_g}g</li>
+                            </ul>
+                        `;
+                    }
+                    
+                    resultsDiv.innerHTML = `
+                        <p><strong>Diet Recommendation:</strong> ${predictions.diet_recommendation}</p>
+                        <p><strong>Weekly Exercise Hours:</strong> ${predictions.weekly_exercise_hours} hours</p>
+                        <p><strong>Suggested Meal:</strong> ${predictions.meal}</p>
+                        <p><strong>Ingredients:</strong> ${predictions.ingredients}</p>
+                        ${nutritionSection}
+                        ${budgetSection}
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="grocery-btn" onclick="openGroceryList('${predictions.ingredients}')">🛒 View Grocery List</button>
+                            <button class="tracking-btn" onclick="addMealToTracking(${JSON.stringify(predictions.nutrition).replace(/"/g, '&quot;')}, ${estimatedMealCost || 0})">📊 Add to Tracking</button>
+                            <button onclick="window.location.href='/customer/index'" style="background-color: #fff; color: #f5576c; border: 2px solid #fff; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Back to Dashboard</button>
+                        </div>
+                    `;
+                    
+                    results.style.display = 'block';
+                    trackingDashboard.style.display = 'block';
+                    results.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    error.innerHTML = `Error: ${data.error}`;
+                    error.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                error.innerHTML = 'An error occurred while processing your request.';
+                error.style.display = 'block';
+            })
+            .finally(() => {
+                // Restore button state
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                loading.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 
